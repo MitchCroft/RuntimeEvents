@@ -121,6 +121,13 @@ namespace RuntimeEvents.ParameterProcessors {
         //PUBLIC
 
         /// <summary>
+        /// Check if the specified type has a processor element
+        /// </summary>
+        /// <param name="type">The type object that marks the parameter processor to check the state of</param>
+        /// <returns>Returns true if there is a processor that can be used for the specified type</returns>
+        public static bool HasProcessor(Type type) { return GetProcessor(type) != null; }
+
+        /// <summary>
         /// Retrieve the processor for the specified type
         /// </summary>
         /// <param name="type">The type object that marks the parameter processor to retrieve</param>
