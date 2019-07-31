@@ -147,8 +147,12 @@ namespace RuntimeEvents {
             //Store the target of the operation
             UnityEngine.Object target = callback.Target;
 
+            //If there are no dynamic parameters and the function is void, bind directly
+            if (parameters.Length == 0 && method.ReturnType == typeof(void))
+                return (RuntimeAction)Delegate.CreateDelegate(typeof(RuntimeAction), target, method, false);
+
             //Return the delegate action that will be raised
-            return () => method.Invoke(target, parameters);
+            else return () => method.Invoke(target, parameters);
         }
 
         /// <summary>
