@@ -34,7 +34,7 @@ namespace RuntimeEvents.ParameterProcessors {
         /// <param name="value">The Unity Object value that is to be stored within the cache</param>
         /// <returns>Returns true if the supplied object is a Unity Object value</returns>
         public override bool AssignValue(PersistentParameterCache parameterCache, object value) {
-            if (typeof(UnityEngine.Object).IsAssignableFrom(value.GetType())) return false;
+            if (value != null && typeof(UnityEngine.Object).IsAssignableFrom(value.GetType())) return false;
             parameterCache.UnityObject = (UnityEngine.Object)value;
             parameterCache.TypeValue = (value != null ? value.GetType() : null);
             return true;

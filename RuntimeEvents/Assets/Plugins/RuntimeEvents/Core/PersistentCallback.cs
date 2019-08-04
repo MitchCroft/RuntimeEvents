@@ -52,7 +52,7 @@ namespace RuntimeEvents {
         /// <summary>
         /// Store the state that is being used for this event callback
         /// </summary>
-        [SerializeField] private ERuntimeEventState eventState = ERuntimeEventState.RuntimeOnly;
+        [SerializeField] private ERuntimeEventState eventState;
 
         /// <summary>
         /// Flags if this event being raised is dynamic and should have its parameter information supplied from the event being called
@@ -106,7 +106,7 @@ namespace RuntimeEvents {
             set {
                 target = value;
                 methodName = string.Empty;
-                parameterInfo = null;
+                parameterInfo = new PersistentCallbackParameterInfo[0];
             }
         }
 
@@ -130,13 +130,35 @@ namespace RuntimeEvents {
         //PUBLIC
 
         /// <summary>
+        /// Force the resetting of base values to start with
+        /// </summary>
+        public PersistentCallback() { ResetAll(); }
+
+        /// <summary>
+        /// Reset the selected method of this callback, clearing assigned data
+        /// </summary>
+        public void ResetMethod() {
+            isDynamic = false;
+            methodName = string.Empty;
+            parameterInfo = new PersistentCallbackParameterInfo[0];
+        }
+
+        /// <summary>
+        /// Reset this callback object definition to the default values
+        /// </summary>
+        public void ResetAll() {
+            eventState = ERuntimeEventState.RuntimeOnly;
+            target = null;
+            ResetMethod();
+        }
+
+        /// <summary>
         /// Provide implicit operator checking to see if a persistent callback object is valid for use
         /// </summary>
         /// <param name="callback">The persistent callback object that is being searched</param>
         public static implicit operator bool(PersistentCallback callback) {
             return (callback != null &&                             //Nothing to search
                     callback.target != null &&                      //No target object has been set
-                    !(callback.target is GameObject) &&             //The target is a Game Object (Needs to be a custom element i.e. Component or ScriptableObject)
                     !string.IsNullOrEmpty(callback.methodName));    //There is no method name assigned
         }
     }

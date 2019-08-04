@@ -7,8 +7,7 @@ namespace RuntimeEvents {
     /// <summary>
     /// Store the base information that will be used to display the Runtime Event elements within the inspector
     /// </summary>
-    [Serializable]
-    public abstract class RuntimeEventBase {
+    [Serializable] public abstract class RuntimeEventBase {
         /*----------Types----------*/
         //PROTECTED
 
@@ -28,11 +27,6 @@ namespace RuntimeEvents {
         //PRIVATE
 
         /// <summary>
-        /// Store the types that will be used to identify dynamically callable functions for this event
-        /// </summary>
-        private readonly Type[] DYNAMIC_TYPES;
-
-        /// <summary>
         /// Store a collection of persistent callbacks that can be invoked during execution
         /// </summary>
         [SerializeField] protected PersistentCallback[] persistents;
@@ -42,13 +36,15 @@ namespace RuntimeEvents {
         /// </summary>
         protected EDirtyFlags dirtyFlags = EDirtyFlags.All;
 
-        /*----------Properties----------*/
         //PUBLIC
 
         /// <summary>
-        /// Retrieve a collection of the dynamic types that are used by this event object
+        /// Store the types that will be used to identify dynamically callable functions for this event
         /// </summary>
-        public ReadOnlyCollection<Type> DynamicTypes { get { return Array.AsReadOnly(DYNAMIC_TYPES); } }
+        public readonly Type[] DYNAMIC_TYPES;
+
+        /*----------Properties----------*/
+        //PUBLIC
 
         /// <summary>
         /// Get the number of registered persistent listeners
