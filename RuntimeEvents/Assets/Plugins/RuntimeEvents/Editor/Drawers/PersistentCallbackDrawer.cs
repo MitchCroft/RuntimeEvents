@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
+using RuntimeEvents.ParameterProcessors;
+
 #if !UNITY_5_6_OR_NEWER
 #error Runtime Event Drawing requires Unity 5.6 or newer to be be able to be displayed in the inspector
 #endif
@@ -71,39 +73,40 @@ namespace RuntimeEvents {
             /// <param name="method">Information about the method that will be raised by the </param>
             /// <param name="isDynamic">Flags if this callback is dynamic, receiving values from called event</param>
             private static void AssignPersistentCallback(PersistentCallback[] callbacks, UnityEngine.Object target, PersistentMethod method, bool isDynamic) {
-                //Setup the default values for the parameters that can be raised
-                int ind = 0;
-                PersistentCallback.PersistentCallbackParameterInfo[] parameterInfos = new PersistentCallback.PersistentCallbackParameterInfo[method.Parameters.Length];
-                foreach (PersistentParameter param in method.Parameters) {
-                    //Retrieve the processor for this parameter type
-                    ParameterProcessors.AParameterProcessor processor = ParameterProcessors.ParameterProcessors.GetProcessor(method.ParameterSignature[ind]);
-
-                    //This should always be successful, but just in case
-                    if (processor == null) throw new OperationCanceledException("Unable to retrieve a Parameter Processor instance for the type '" + method.ParameterSignature[ind].FullName + "'");
-
-                    //Store the default value that will be assigned to the parameter
-                    object defaultValue = null;
-
-                    //Check if there is a default value for this entry
-                    if (param.DefaultValue is DBNull) defaultValue = processor.GetDefaultValue(method.ParameterSignature[ind]);
-                    else defaultValue = param.DefaultValue;
-
-                    //Assign the values to the parameter info object
-                    parameterInfos[ind] = new PersistentCallback.PersistentCallbackParameterInfo();
-                    parameterInfos[ind].ParameterType = method.ParameterSignature[ind];
-                    processor.AssignValue(parameterInfos[ind].ParameterCache, defaultValue);
-
-                    //Increase the progress
-                    ++ind;
-                }
-
                 //Loop through the callback objects and assign the method values
                 for (int i = 0; i < callbacks.Length; i++) {
+                    //Setup the default values for the parameters that can be raised
+                    int ind = 0;
+                    PersistentCallback.PersistentCallbackParameterInfo[] parameterInfos = new PersistentCallback.PersistentCallbackParameterInfo[method.Parameters.Length];
+                    foreach (PersistentParameter param in method.Parameters) {
+                        //Retrieve the processor for this parameter type
+                        ParameterProcessors.AParameterProcessor processor = ParameterProcessors.ParameterProcessors.GetProcessor(method.ParameterSignature[ind]);
+
+                        //This should always be successful, but just in case
+                        if (processor == null) throw new OperationCanceledException("Unable to retrieve a Parameter Processor instance for the type '" + method.ParameterSignature[ind].FullName + "'");
+
+                        //Store the default value that will be assigned to the parameter
+                        object defaultValue = null;
+
+                        //Check if there is a default value for this entry
+                        if (param.DefaultValue is DBNull) defaultValue = processor.GetDefaultValue(method.ParameterSignature[ind]);
+                        else defaultValue = param.DefaultValue;
+
+                        //Assign the values to the parameter info object
+                        parameterInfos[ind] = new PersistentCallback.PersistentCallbackParameterInfo();
+                        parameterInfos[ind].ParameterType = method.ParameterSignature[ind];
+                        processor.AssignValue(parameterInfos[ind].ParameterCache, defaultValue);
+
+                        //Increase the progress
+                        ++ind;
+                    }
+
+
                     //Assign the new values
-                    callbacks[i].Target         = target;
-                    callbacks[i].MethodName     = method.MethodName;
-                    callbacks[i].ParameterInfo  = parameterInfos;
-                    callbacks[i].IsDynamic      = isDynamic;
+                    callbacks[i].Target = target;
+                    callbacks[i].MethodName = method.MethodName;
+                    callbacks[i].ParameterInfo = parameterInfos;
+                    callbacks[i].IsDynamic = isDynamic;
                 }
             }
 
@@ -271,7 +274,51 @@ namespace RuntimeEvents {
             /// <param name="property">The property that is to have the height calculated for</param>
             /// <returns>Returns the height in pixels that should be reserved for this element</returns>
             public static float GetElementHeight(SerializedProperty property) {
-                return EditorGUIUtility.singleLineHeight * 2 + (BUFFER_SPACE * 2f);
+                //Get the target objects of the property
+                PersistentCallback[] callbacks;
+                property.GetPropertyValues(out callbacks);
+
+                //Check that there are values to check
+                if (callbacks.Length == 0) return 0f;
+
+                //Get the height that is used for the object/method selection elements
+                float height = EditorGUIUtility.singleLineHeight * 2 + (BUFFER_SPACE * 2f);
+
+                //Get the method that is in use by the primary (first) callback
+                PersistentMethod primary = PersistentOptionsUtility.GetPersistentMethodFromCallback(callbacks[0]);
+
+                //Check if this method is the same across all selections
+                bool isDifferent = false;
+                for (int i = 1; i < callbacks.Length; i++) {
+                    if (primary != PersistentOptionsUtility.GetPersistentMethodFromCallback(callbacks[i])) {
+                        isDifferent = true;
+                        break;
+                    }
+                }
+
+                //If the methods are the same then the parameters can be shown
+                if (!isDifferent && !callbacks[0].IsDynamic && primary != null) {
+                    //Calculate the height required for each drawer
+                    int ind = 0;
+                    foreach (var param in primary.Parameters) {
+                        //Get the drawer for the type
+                        AParameterDrawer drawer = ParameterDrawers.GetDrawer(primary.ParameterSignature[ind], param.Attribute);
+
+                        //Collate the parameter cache's that are needed for this callback
+                        PersistentParameterCache[] current = new PersistentParameterCache[callbacks.Length];
+                        for (int i = 0; i < callbacks.Length; i++)
+                            current[i] = callbacks[i].ParameterInfo[ind].ParameterCache;
+
+                        //Retrieve the height for the drawer
+                        height += drawer.GetDrawerHeight(current, param.DisplayLabel) + BUFFER_SPACE;
+
+                        //Increment the progress
+                        ++ind;
+                    }
+                }
+
+                //Return the final completed height
+                return height;
             }
 
             /// <summary>
@@ -280,8 +327,9 @@ namespace RuntimeEvents {
             /// <param name="position">The position within the inspector that the property should be drawn to</param>
             /// <param name="property">The property that is to be displayed within the inspector</param>
             /// <param name="dynamicTypes">Defines the types that are designated as dynamic types for operation</param>
+            /// <param name="forceDirty">An action that can be raised from the generic menus callback to force a dirty of the current elements</param>
             /// <returns>Returns true if an event occurred that caused changes that need to be saved</returns>
-            public static bool DrawLayoutElements(Rect position, SerializedProperty property, Type[] dynamicTypes) {
+            public static bool DrawLayoutElements(Rect position, SerializedProperty property, Type[] dynamicTypes, Action forceDirty) {
                 //Get the target objects of the property
                 PersistentCallback[] callbacks;
                 property.GetPropertyValues(out callbacks);
@@ -342,7 +390,7 @@ namespace RuntimeEvents {
                         EditorGUI.BeginChangeCheck();
 
                         //Present the option for changing the target object
-                        UnityEngine.Object newTarget = EditorGUI.ObjectField(GetLineOffsetPosition(position, 1, .3f), GUIContent.none, callbacks[0].Target, typeof(UnityEngine.Object), true);
+                        UnityEngine.Object newTarget = EditorGUI.ObjectField(GetLineOffsetPosition(position, 1, .4f), GUIContent.none, callbacks[0].Target, typeof(UnityEngine.Object), true);
 
                         //If the target changed
                         if (EditorGUI.EndChangeCheck()) {
@@ -356,16 +404,19 @@ namespace RuntimeEvents {
                     }
                 }
 
+                //Store the persistent method that is assigned to the primary
+                PersistentMethod primaryMethod = PersistentOptionsUtility.GetPersistentMethodFromCallback(callbacks[0]);
+
+                //Store a flag that indicates if the callbacks have different methods
+                bool methodsAreDifferent = false;
+
                 //Allow for the modification of selected function if there is a target set
                 using (GUILocker.PushSegment(callbacks[0].Target)) {
                     //Retrieve the Content that will be displayed for the function selection selected option
                     GUIContent selectedDisplay;
 
-                    //Try to retrieve the current method described by this callback
-                    PersistentMethod selectedMethod = PersistentOptionsUtility.GetPersistentMethodFromCallback(callbacks[0]);
-
                     //If a method match could be found, use its display label
-                    if (selectedMethod != null) selectedDisplay = selectedMethod.DisplayLabel;
+                    if (primaryMethod != null) selectedDisplay = primaryMethod.DisplayLabel;
 
                     //Otherwise, method may be missing
                     else {
@@ -379,46 +430,79 @@ namespace RuntimeEvents {
                         );
                     }
 
-                    //Check if the selected method is different for the supplied callbacks
-                    bool isDifferent = false;
-
                     //Check there are multiple callbacks to compare against
                     if (callbacks.Length > 1) {
                         //Check if the selected callbacks for the other callbacks is different
                         for (int i = 1; i < callbacks.Length; i++) {
-                            if (selectedMethod != PersistentOptionsUtility.GetPersistentMethodFromCallback(callbacks[i])) {
-                                isDifferent = true;
+                            if (primaryMethod != PersistentOptionsUtility.GetPersistentMethodFromCallback(callbacks[i])) {
+                                methodsAreDifferent = true;
                                 break;
                             }
                         }
                     }
 
                     //Display the dropdown button for selecting the active callback
-                    using (GUIMixer.PushSegment(isDifferent)) {
-                        if (EditorGUI.DropdownButton(GetLineOffsetPosition(position, 1, .7f, .3f), selectedDisplay, FocusType.Passive)) {
+                    using (GUIMixer.PushSegment(methodsAreDifferent)) {
+                        if (EditorGUI.DropdownButton(GetLineOffsetPosition(position, 1, .6f, .4f), selectedDisplay, FocusType.Passive)) {
                             //Retrieve the constructed menu
-                            GenericMenu optionsMenu = CreateOptionsSelectionMenu(callbacks[0].Target, callbacks[0].IsValid, callbacks[0].IsDynamic, selectedMethod, dynamicTypes,
+                            GenericMenu optionsMenu = CreateOptionsSelectionMenu(callbacks[0].Target, callbacks[0].IsValid, callbacks[0].IsDynamic, primaryMethod, dynamicTypes,
                                 //Reset function
                                 () => {
                                     //Loop through and reset all of the callback methods
                                     for (int i = 0; i < callbacks.Length; i++)
                                         callbacks[i].ResetMethod();
 
-                                    //Values modified, save and recalculate elements as needed
-                                    elementsModified = true;
+                                    //Reset the primary method
+                                    primaryMethod = null;
+                                    methodsAreDifferent = false;
+
+                                    //Values modified, force the calling object to re-calculate this element
+                                    forceDirty();
                                 },
                                 //Assign method function
                                 (target, method, isDynamic) => {
-                                //Apply the new method to the option
-                                AssignPersistentCallback(callbacks, target, method, isDynamic);
+                                    //Apply the new method to the option
+                                    AssignPersistentCallback(callbacks, target, method, isDynamic);
 
-                                //Values modified, save and recalculate elements as needed
-                                elementsModified = true;
-                            });
+                                    //Methods are now the same
+                                    primaryMethod = method;
+                                    methodsAreDifferent = false;
+
+                                    //Values modified, force the calling object to re-calculate this element
+                                    forceDirty();
+                                });
 
                             //Display the various options
-                            optionsMenu.DropDown(GetLineOffsetPosition(position, 1, .7f, .3f));
+                            optionsMenu.DropDown(GetLineOffsetPosition(position, 1, .6f, .4f));
                         }
+                    }
+                }
+
+                //If the primary method is different across the multiple objects
+                if (!methodsAreDifferent && !callbacks[0].IsDynamic && primaryMethod != null) {
+                    //Store the rect of the last point
+                    Rect displayRect = GetLineOffsetPosition(position, 1, 1f);
+
+                    //Loop through all of the parameters for this method
+                    int ind = 0;
+                    foreach (var param in primaryMethod.Parameters) {
+                        //Retrieve the drawer for this parameter
+                        AParameterDrawer drawer = ParameterDrawers.GetDrawer(primaryMethod.ParameterSignature[ind], param.Attribute);
+
+                        //Collate the parameter cache's that are needed for this callback
+                        PersistentParameterCache[] current = new PersistentParameterCache[callbacks.Length];
+                        for (int i = 0; i < callbacks.Length; i++)
+                            current[i] = callbacks[i].ParameterInfo[ind].ParameterCache;
+
+                        //Setup the display rect for displaying values correctly given the values
+                        displayRect.y += displayRect.height + BUFFER_SPACE;
+                        displayRect.height = drawer.GetDrawerHeight(current, param.DisplayLabel);
+
+                        //Draw the elements to the inspector
+                        elementsModified |= drawer.DisplayParameterValue(displayRect, current, param.DisplayLabel);
+
+                        //Increment the current progress through the parameters
+                        ++ind;
                     }
                 }
 

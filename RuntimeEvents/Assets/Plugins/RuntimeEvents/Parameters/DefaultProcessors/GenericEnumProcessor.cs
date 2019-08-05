@@ -14,7 +14,7 @@ namespace RuntimeEvents.ParameterProcessors {
         /// </summary>
         /// <param name="processing">A type value matching the one supplied in the Custom Type Processor Attribute</param>
         /// <returns>Returns a constant 0 equivelant value to be used as the default</returns>
-        public override object GetDefaultValue(Type processing) { return 0; }
+        public override object GetDefaultValue(Type processing) { return null; }
 
         /// <summary>
         /// Get the Enum that is stored within the parameter cache information

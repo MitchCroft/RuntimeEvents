@@ -23,7 +23,7 @@ namespace RuntimeEvents.ParameterProcessors {
             /// </summary>
             /// <param name="x">The first instance to be checked</param>
             /// <param name="y">The second instance to be checked</param>
-            /// <returns>Returns true if the both of the instances are equivelant</returns>
+            /// <returns>Returns true if both of the instances are equivelant</returns>
             public override bool Equals(CustomTypeProcessorAttribute x, CustomTypeProcessorAttribute y) {
                 //Check the possible null conditions
                 if (x == null && y == null) return true;
@@ -145,8 +145,8 @@ namespace RuntimeEvents.ParameterProcessors {
                 //Otherwise, search down the hierarchy chain for a generic option
                 else {
                     //Store the type that is being searched for
-                    Type search = type;
-                    do {
+                    Type search = type.BaseType;
+                    while (search != null) {
                         //Create the type that is being searched for
                         buffer = new CustomTypeProcessorAttribute(search, true);
 
@@ -158,7 +158,7 @@ namespace RuntimeEvents.ParameterProcessors {
 
                         //Advance a step up the hierarchy
                         search = search.BaseType;
-                    } while (search != null);
+                    } 
 
                     //If search is null, nothing could be found. Cache the result
                     if (search == null) typeMapping[type] = null;

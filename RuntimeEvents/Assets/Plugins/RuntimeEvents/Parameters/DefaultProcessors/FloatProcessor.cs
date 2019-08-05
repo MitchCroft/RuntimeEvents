@@ -34,8 +34,8 @@ namespace RuntimeEvents.ParameterProcessors {
         /// <param name="value">The floating point value that is to be stored within the cache</param>
         /// <returns>Returns true if the supplied object is a floating point value</returns>
         public override bool AssignValue(PersistentParameterCache parameterCache, object value) {
-            if (!(value is int)) return false;
-            parameterCache.IntValue = (int)value;
+            if (!(value is float)) return false;
+            parameterCache.FloatValue = (float)value;
             return true;
         }
     }

@@ -55,6 +55,10 @@ namespace RuntimeEvents {
                 if (method.IsSpecialName && !method.Name.StartsWith(SETTER_PROPERTY_PREFIX))
                     return true;
 
+                //Check if there is an exclusion attribute
+                if (method.GetFirstCustomAttributeOf<OmitRuntimeEventAttribute>() != null)
+                    return true;
+
                 //Retrieve the parameters of the object
                 ParameterInfo[] parameters = method.GetParameters();
 

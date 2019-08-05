@@ -81,12 +81,24 @@ namespace RuntimeEvents {
             cached.list.drawHeaderCallback += rect => EditorGUI.LabelField(rect, displayLabel);
             cached.list.drawElementCallback += (rect, index, active, focused) => {
                 //Flag if the height needs to be regenerated
-                if (PersistentCallbackDrawer.DrawLayoutElements(rect, persistentsProp.GetArrayElementAtIndex(index), eventBase.DYNAMIC_TYPES)) {
+                if (PersistentCallbackDrawer.DrawLayoutElements(
+                        rect, 
+                        persistentsProp.GetArrayElementAtIndex(index), 
+                        eventBase.DYNAMIC_TYPES, 
+                        () => {
+                            eventBase.DirtyPersistent();
+                            cached.heightIsValid = false;
+                            runtimeEventProp.serializedObject.Update();
+                        }
+                    )) {
                     //Persistent events need to be dirtied so that they will be updated if changes occurred
                     eventBase.DirtyPersistent();    
 
                     //Changes means that the height needs to be regenerated to account for any changes
                     cached.heightIsValid = false;
+
+                    //Force this element to need to redraw
+                    runtimeEventProp.serializedObject.Update();
                 }
             };
             cached.list.onChangedCallback = list => cached.heightIsValid = false;
