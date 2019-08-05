@@ -29,10 +29,11 @@ namespace RuntimeEvents {
             /// <summary>
             /// Initialise the lock with basic information about its state
             /// </summary>
+            /// <param name="state">Flags if the UI is active at this specific point</param>
             public GUILock(bool state) { GUIActive = state; }
 
             /// <summary>
-            /// Implicitly raise the <see cref="GUILocker.PopSegment"/> to control lock state sections
+            /// Implicitly raise <see cref="GUILocker.PopSegment"/> to control lock state sections
             /// </summary>
             public void Dispose() { GUILocker.PopSegment(); }
         }

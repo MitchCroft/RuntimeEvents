@@ -99,12 +99,15 @@ namespace RuntimeEvents {
                     //Get the new property element in the array
                     SerializedProperty firstProp = persistentsProp.GetArrayElementAtIndex(0);
 
-                    //Get the base object out of this interaction
-                    PersistentCallback firstObj;
-                    firstProp.GetPropertyValue(out firstObj);
+                    //Retrieve all of the objects at this point
+                    PersistentCallback[] firsts;
+                    firstProp.GetPropertyValues(out firsts);
 
                     //Reset the values of this object to the default values
-                    firstObj.ResetAll();
+                    for (int i = 0; i < firsts.Length; i++) {
+                        if (firsts[i] != null)
+                            firsts[i].ResetAll();
+                    }
                 }
             };
 
@@ -163,7 +166,7 @@ namespace RuntimeEvents {
                 throw new NullReferenceException("No cached list is present for the current Event Base object. Can't draw inspector values");
 
             //Begin checking for object changes 
-            Undo.RecordObject(property.serializedObject.targetObject, "Modify Runtime Event");
+            Undo.RecordObjects(property.serializedObject.targetObjects, "Modify Runtime Event");
 
             //Display the persistent callback options
             listCache[eventBase].list.DoList(position);
