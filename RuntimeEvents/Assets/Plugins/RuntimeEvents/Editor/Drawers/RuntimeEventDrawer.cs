@@ -11,36 +11,13 @@ namespace RuntimeEvents {
     /// </summary>
     [CustomPropertyDrawer(typeof(RuntimeEventBase), true)]
     public sealed partial class RuntimeEventDrawer : PropertyDrawer {
-        /*----------Types----------*/
-        //PRIVATE
-
-        /// <summary>
-        /// Store a collection of values that is intended to reduce the number of calculations that are required for each element
-        /// </summary>
-        private sealed class CachedReorderableList {
-            /// <summary>
-            /// Store the created reorderable list that will be used for drawing operations
-            /// </summary>
-            public ReorderableList list;
-
-            /// <summary>
-            /// Store a cached value for the height of the list to reduce re-calculations
-            /// </summary>
-            public float height;
-
-            /// <summary>
-            /// Flag if the height of the re-orderable list object is valid
-            /// </summary>
-            public bool heightIsValid;
-        }
-
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
         /// Store a cache of the generated runtime list elements that need to be displayed
         /// </summary>
-        private Dictionary<RuntimeEventBase, CachedReorderableList> listCache;
+        private Dictionary<RuntimeEventBase, ReorderableList> listCache;
 
         /*----------Functions----------*/
         //PRIVATE
@@ -56,16 +33,14 @@ namespace RuntimeEvents {
             SerializedProperty persistentsProp = runtimeEventProp.FindPropertyRelative("persistents");
 
             //Create the cache element that will be stored
-            CachedReorderableList cached = new CachedReorderableList {
-                list = new ReorderableList(
-                    runtimeEventProp.serializedObject,
-                    persistentsProp,
-                    true,                                                       //Drag-able
-                    true,                                                       //Header
-                    true,                                                       //Add Button
-                    true                                                        //Remove Button
-                )
-            };
+            ReorderableList list = new ReorderableList(
+                runtimeEventProp.serializedObject,
+                persistentsProp,
+                true,                                                       //Drag-able
+                true,                                                       //Header
+                true,                                                       //Add Button
+                true                                                        //Remove Button
+            );
 
             //Create a label that has the display elements 
             GUIContent displayLabel = new GUIContent(
@@ -77,9 +52,9 @@ namespace RuntimeEvents {
             );
 
             //Setup the callback functions for calculating and displaying element values
-            cached.list.elementHeightCallback += index => PersistentCallbackDrawer.GetElementHeight(persistentsProp.GetArrayElementAtIndex(index));
-            cached.list.drawHeaderCallback += rect => EditorGUI.LabelField(rect, displayLabel);
-            cached.list.drawElementCallback += (rect, index, active, focused) => {
+            list.elementHeightCallback += index => PersistentCallbackDrawer.GetElementHeight(persistentsProp.GetArrayElementAtIndex(index));
+            list.drawHeaderCallback += rect => EditorGUI.LabelField(rect, displayLabel);
+            list.drawElementCallback += (rect, index, active, focused) => {
                 //Flag if the height needs to be regenerated
                 if (PersistentCallbackDrawer.DrawLayoutElements(
                         rect, 
@@ -87,24 +62,19 @@ namespace RuntimeEvents {
                         eventBase.DYNAMIC_TYPES, 
                         () => {
                             eventBase.DirtyPersistent();
-                            cached.heightIsValid = false;
                             runtimeEventProp.serializedObject.Update();
                         }
                     )) {
                     //Persistent events need to be dirtied so that they will be updated if changes occurred
                     eventBase.DirtyPersistent();    
 
-                    //Changes means that the height needs to be regenerated to account for any changes
-                    cached.heightIsValid = false;
-
                     //Force this element to need to redraw
                     runtimeEventProp.serializedObject.Update();
                 }
             };
-            cached.list.onChangedCallback = list => cached.heightIsValid = false;
-            cached.list.onAddCallback = list => {
+            list.onAddCallback = dynamicList => {
                 //If this is the first object value, reset the object to its default state 
-                if (++list.serializedProperty.arraySize == 1) {
+                if (++dynamicList.serializedProperty.arraySize == 1) {
                     //Apply the new values to the object
                     runtimeEventProp.serializedObject.ApplyModifiedProperties();
 
@@ -124,7 +94,7 @@ namespace RuntimeEvents {
             };
 
             //Add this option to the cache
-            listCache[eventBase] = cached;
+            listCache[eventBase] = list;
         }
 
         //PUBLIC
@@ -132,7 +102,7 @@ namespace RuntimeEvents {
         /// <summary>
         /// Initialise this object with default values
         /// </summary>
-        public RuntimeEventDrawer() { listCache = new Dictionary<RuntimeEventBase, CachedReorderableList>(); }
+        public RuntimeEventDrawer() { listCache = new Dictionary<RuntimeEventBase, ReorderableList>(); }
 
         /// <summary>
         /// Retrieve the height of the area within the inspector that this property will take up
@@ -150,16 +120,10 @@ namespace RuntimeEvents {
                 CreateCachedList(eventBase, property, label); //Setup the events list
 
             //Grab the cache object being checked
-            CachedReorderableList cache = listCache[eventBase];
-
-            //Check if the height value is valid
-            if (!cache.heightIsValid) {
-                cache.height = cache.list.GetHeight();
-                cache.heightIsValid = true;
-            }
+            ReorderableList list = listCache[eventBase];
 
             //Return the cached height value
-            return cache.height;
+            return list.GetHeight();
         }
 
         /// <summary>
@@ -181,7 +145,7 @@ namespace RuntimeEvents {
             Undo.RecordObjects(property.serializedObject.targetObjects, "Modify Runtime Event");
 
             //Display the persistent callback options
-            listCache[eventBase].list.DoList(position);
+            listCache[eventBase].DoList(position);
         }
     }
 }
