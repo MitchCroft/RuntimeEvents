@@ -89,7 +89,7 @@ namespace RuntimeEvents.Testing.Benchmarking {
         [SerializeField, Tooltip("The number of times each test will be run")]
         private int testRunCount = 10000;
 
-        [SerializeField, Tooltip("The location that the generated CSV result files should be deposited")]
+        [SerializeField, Tooltip("The location that the generated CSV result files should be deposited. This is combined with the persistent data path")]
         private string outputLocation;
 
         [Header("Test 1")]
@@ -129,13 +129,18 @@ namespace RuntimeEvents.Testing.Benchmarking {
         [SerializeField, Tooltip("Single, identical dynamic function for both with an added listener attached to both")]
         private CombinationBoolEvent test2d;
 
+        [Header("Events")]
+
+        [SerializeField, Tooltip("Functions that will be raised once the tests have been completed")]
+        private RuntimeEvent onComplete;
+
         /*----------Functions----------*/
         //PRIVATE
 
         /// <summary>
         /// Initialise this objects internal information
         /// <summary>
-        private void Awake() {
+        private void Start() {
             if (test1a.runEvents) BenchmarkCombinationEvent("Test 1A", test1a);
             if (test1b.runEvents) BenchmarkCombinationEvent("Test 1B", test1b);
             if (test1c.runEvents) BenchmarkCombinationEvent("Test 1C", test1c);
@@ -157,6 +162,7 @@ namespace RuntimeEvents.Testing.Benchmarking {
                 BenchmarkBoolCombinationEvent("Test 2D", test2d);
             }
             Debug.Log("Tests Complete", this);
+            onComplete.Invoke();
         }
 
         /// <summary>
@@ -291,8 +297,9 @@ namespace RuntimeEvents.Testing.Benchmarking {
 
             //Output the results
             try {
-                if (!string.IsNullOrEmpty(outputLocation)) Directory.CreateDirectory(outputLocation);
-                File.WriteAllText(Path.Combine(outputLocation, label + ".csv"), csv.ToString());
+                string path = Path.Combine(Application.persistentDataPath, outputLocation);
+                if (!string.IsNullOrEmpty(path)) Directory.CreateDirectory(path);
+                File.WriteAllText(Path.Combine(path, label + ".csv"), csv.ToString());
             } catch (Exception exec) {
                 Debug.LogError("Failed to export CSV for test " + label + ". ERROR: " + exec.Message, this);
             }
