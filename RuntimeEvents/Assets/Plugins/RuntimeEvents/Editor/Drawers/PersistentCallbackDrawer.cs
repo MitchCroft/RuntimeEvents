@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Collections.Generic;
 
 using UnityEngine;
@@ -79,23 +80,17 @@ namespace RuntimeEvents {
                     int ind = 0;
                     PersistentCallback.PersistentCallbackParameterInfo[] parameterInfos = new PersistentCallback.PersistentCallbackParameterInfo[method.Parameters.Length];
                     foreach (PersistentParameter param in method.Parameters) {
-                        //Retrieve the processor for this parameter type
-                        ParameterProcessors.AParameterProcessor processor = ParameterProcessors.ParameterProcessors.GetProcessor(method.ParameterSignature[ind]);
-
-                        //This should always be successful, but just in case
-                        if (processor == null) throw new OperationCanceledException("Unable to retrieve a Parameter Processor instance for the type '" + method.ParameterSignature[ind].FullName + "'");
-
                         //Store the default value that will be assigned to the parameter
                         object defaultValue = null;
 
                         //Check if there is a default value for this entry
-                        if (param.DefaultValue is DBNull) defaultValue = processor.GetDefaultValue(method.ParameterSignature[ind]);
+                        if (param.DefaultValue is DBNull) defaultValue = method.ParameterSignature[ind].GetDefaultValue();
                         else defaultValue = param.DefaultValue;
 
                         //Assign the values to the parameter info object
                         parameterInfos[ind] = new PersistentCallback.PersistentCallbackParameterInfo();
                         parameterInfos[ind].ParameterType = method.ParameterSignature[ind];
-                        processor.AssignValue(parameterInfos[ind].ParameterCache, defaultValue);
+                        parameterInfos[ind].ParameterCache.SetValue(defaultValue, method.ParameterSignature[ind]);
 
                         //Increase the progress
                         ++ind;
@@ -189,6 +184,9 @@ namespace RuntimeEvents {
                     //Store the starting directory label that will be used for creating the sub directories of options
                     string labelPrefix = search.GetType().Name + "/";
 
+                    //Use a string builder to construct the display names for the different method options
+                    StringBuilder sb = new StringBuilder();
+
                     //Store the target that will be operated on if this option is selected
                     UnityEngine.Object objTarget = search;
 
@@ -253,9 +251,32 @@ namespace RuntimeEvents {
                         //Store a collectible index for the lambda
                         int ind = i;
 
+                        //Clear out the previous string value
+                        sb.Length = 0;
+
+                        //Add the current prefix to the entry
+                        sb.Append(labelPrefix);
+
+                        //Add the display text to the entry
+                        sb.Append(methods[i].DisplayLabel.text);
+
+                        //Check to see if all of the contained entries have drawers
+                        bool found = false;
+
+                        //Check if a missing drawer was found
+                        for (int j = 0; j < methods[i].Parameters.Length; j++) {
+                            if (!ParameterDrawers.HasDrawer(methods[i].ParameterSignature[j], methods[i].Parameters[j].Attribute)) {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        //Check for a missing drawer
+                        if (found) sb.Append("\t*");
+
                         //Add the option to the menu
                         optionsMenu.AddItem(
-                            new GUIContent(labelPrefix + methods[i].DisplayLabel.text, methods[i].DisplayLabel.tooltip),
+                            new GUIContent(sb.ToString(), methods[i].DisplayLabel.tooltip),
                             !currentIsDynamic && methods[i] == selectedMethod,
                             () => assignCallback(objTarget, methods[ind], false)
                         );

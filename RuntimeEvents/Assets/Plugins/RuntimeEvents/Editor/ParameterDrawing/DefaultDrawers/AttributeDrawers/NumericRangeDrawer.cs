@@ -38,11 +38,7 @@ namespace RuntimeEvents.ParameterProcessors {
                 return DrawErrorMessage(position, label, "NumericRange Attribute is only usable on int/float types");
 
             //Get the value of the primary cache object
-            object currentObj;
-            if (!Processor.GetValue(parameterCaches[0], out currentObj)) {
-                EditorGUI.LabelField(position, label, new GUIContent("Failed to retrieve current value from processor"));
-                return false;
-            }
+            object currentObj = parameterCaches[0].Value;
 
             //Check if the element has changed
             bool modified = false;
@@ -60,11 +56,7 @@ namespace RuntimeEvents.ParameterProcessors {
                 if (parameterCaches.Length > 1) {
                     for (int i = 1; i < parameterCaches.Length; i++) {
                         //Retrieve this entries value
-                        object newVal;
-                        if (!Processor.GetValue(parameterCaches[i], out newVal)) {
-                            EditorGUI.LabelField(position, label, new GUIContent("Failed to retrieve current value from processor"));
-                            return false;
-                        }
+                        object newVal = parameterCaches[i].Value;
 
                         //If the values are different, flag it
                         if ((float)newVal != val) {
@@ -85,10 +77,8 @@ namespace RuntimeEvents.ParameterProcessors {
                     //If the value changed, apply it 
                     if (EditorGUI.EndChangeCheck()) {
                         modified = true;
-                        for (int i = 0; i < parameterCaches.Length; i++) {
-                            if (!Processor.AssignValue(parameterCaches[i], newVal))
-                                Debug.LogErrorFormat("Failed to assign the new state value '{0}' to the parameter cache at index {1}", newVal, i);
-                        }
+                        for (int i = 0; i < parameterCaches.Length; i++) 
+                            parameterCaches[i].SetValue(newVal, Processing);
                     }
                 }
             }
@@ -103,11 +93,7 @@ namespace RuntimeEvents.ParameterProcessors {
                 if (parameterCaches.Length > 1) {
                     for (int i = 1; i < parameterCaches.Length; i++) {
                         //Retrieve this entries value
-                        object newVal;
-                        if (!Processor.GetValue(parameterCaches[i], out newVal)) {
-                            EditorGUI.LabelField(position, label, new GUIContent("Failed to retrieve current value from processor"));
-                            return false;
-                        }
+                        object newVal = parameterCaches[i].Value;
 
                         //If the values are different, flag it
                         if ((int)newVal != val) {
@@ -128,10 +114,8 @@ namespace RuntimeEvents.ParameterProcessors {
                     //If the value changed, apply it 
                     if (EditorGUI.EndChangeCheck()) {
                         modified = true;
-                        for (int i = 0; i < parameterCaches.Length; i++) {
-                            if (!Processor.AssignValue(parameterCaches[i], newVal))
-                                Debug.LogErrorFormat("Failed to assign the new state value '{0}' to the parameter cache at index {1}", newVal, i);
-                        }
+                        for (int i = 0; i < parameterCaches.Length; i++) 
+                            parameterCaches[i].SetValue(newVal, Processing);
                     }
                 }
             }

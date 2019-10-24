@@ -3,10 +3,6 @@ using System.Reflection;
 
 using UnityEngine;
 
-using RuntimeEvents.ParameterProcessors;
-
-using ProcessorManager = RuntimeEvents.ParameterProcessors.ParameterProcessors;
-
 namespace RuntimeEvents {
     /// <summary>
     /// Provide functionality based on setting up persistent callbacks
@@ -35,37 +31,14 @@ namespace RuntimeEvents {
             //Retrieve the parameter objects that will be raised with the operation
             object[] parameters = new object[paramsInfo != null ? paramsInfo.Length : 0];
             for (int i = 0; i < parameters.Length; i++) {
-                //Retrieve the type that is being used for this parameter
-                Type found = paramsInfo[i].ParameterType;
-
-                //If there is no parameter type, can't use this callback
-                if (found == null) return null;
-
-                //Get the processor for this value
-                AParameterProcessor processor = ProcessorManager.GetProcessor(found);
-
-                //If there is no processor, can't use this callback
-                if (processor == null) {
-                    Debug.LogErrorFormat("Unable to find a Processor object for the value type '{0}'. Is there a Processor missing? This persistent callback will be skipped", found.FullName);
+                //Check that the parameter value is the same
+                if (!paramsInfo[i].ParameterType.IsAssignableFrom(paramsInfo[i].ParameterCache.ParameterType)) {
+                    Debug.LogErrorFormat("Invalid parameter cache data, parameter type value mismatched for method at index {0}", i);
                     return null;
                 }
 
-                //Try to extract the value that will be used for this value
-                try {
-                    //Retrieve the value that will be used
-                    object val;
-                    if (!processor.GetValue(paramsInfo[i].ParameterCache, out val)) {
-                        Debug.LogWarningFormat("Failed to extract object value information from cache data for the type '{0}' with the processor '{1}'. Attempting to retrieve a default value for use", found.FullName, processor.GetType().FullName);
-                        val = processor.GetDefaultValue(found);
-                    }
-                    parameters[i] = val;
-                }
-
-                //If anything goes wrong, missing a value and can't use this callback
-                catch (Exception exec) {
-                    Debug.LogErrorFormat("Encountered an exception when attempting to parse persistent value data of type '{0}'. Unable to generate a value object for the operation, persistent callback will be skipped.\nException: {1}", found.FullName, exec);
-                    return null;
-                }
+                //Extract the value that will be used for this entry
+                parameters[i] = paramsInfo[i].ParameterCache.Value;
             }
             return parameters;
         }

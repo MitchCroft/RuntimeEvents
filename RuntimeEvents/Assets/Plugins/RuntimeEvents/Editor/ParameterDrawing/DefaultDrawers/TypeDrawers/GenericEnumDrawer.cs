@@ -104,20 +104,15 @@ namespace RuntimeEvents.ParameterProcessors {
         /// <param name="label">The label that is attached to this parameter to be displayed</param>
         /// <returns>Returns true if an event occurred that requires the updating of cached values</returns>
         public override bool DisplayParameterValue(Rect position, PersistentParameterCache[] parameterCaches, GUIContent label) {
-            //Get the value of the primary cache object
-            object currentObj;
-            Processor.GetValue(parameterCaches[0], out currentObj);
-
             //Cast the value to an enum
-            Enum enumVal = (Enum)currentObj;
+            Enum enumVal = (Enum)parameterCaches[0].Value;
 
             //Check if the contained values are different
             bool isDifferent = false;
             if (parameterCaches.Length > 1) {
                 for (int i = 1; i < parameterCaches.Length; i++) {
                     //Retrieve this entries value
-                    object newObj;
-                    Processor.GetValue(parameterCaches[i], out newObj);
+                    object newObj = parameterCaches[i].Value;
 
                     //Get the value as an enum
                     Enum newVal = (Enum)newObj;
@@ -126,7 +121,7 @@ namespace RuntimeEvents.ParameterProcessors {
                     if ((enumVal == null && newVal != null) ||
                         (enumVal != null && newVal == null) ||
                         (enumVal.GetType() != newVal.GetType()) ||
-                        (Convert.ToInt32(enumVal) != Convert.ToInt32(newVal))) {
+                        (Convert.ToInt64(enumVal) != Convert.ToInt64(newVal))) {
                         isDifferent = true;
                         break;
                     }
@@ -144,7 +139,7 @@ namespace RuntimeEvents.ParameterProcessors {
                 //Convert the current option to an index
                 int curIndex = (enumVal != null && ENUM_TO_INDEX.ContainsKey(enumVal) ? ENUM_TO_INDEX[enumVal] : -1);
 
-                //Show the text options for the available text
+                //Show the text options for the available selection options
                 int newIndex = EditorGUI.Popup(new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight), label, curIndex, GENERIC_OPTION_LABELS);
 
                 //If the value changed, apply it 
@@ -154,10 +149,8 @@ namespace RuntimeEvents.ParameterProcessors {
 
                     //Apply the new value to the options
                     modified = true;
-                    for (int i = 0; i < parameterCaches.Length; i++) {
-                        if (!Processor.AssignValue(parameterCaches[i], convertVal))
-                            Debug.LogErrorFormat("Failed to assign the new state value '{0}' to the parameter cache at index {1}", convertVal, i);
-                    }
+                    for (int i = 0; i < parameterCaches.Length; i++) 
+                        parameterCaches[i].SetValue(convertVal, convertVal.GetType());
                 }
             }
 

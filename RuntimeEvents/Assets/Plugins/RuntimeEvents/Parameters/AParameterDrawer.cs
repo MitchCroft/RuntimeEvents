@@ -24,11 +24,6 @@ namespace RuntimeEvents.ParameterProcessors {
         /// </summary>
         public ParameterAttribute Attribute { get; set; }
 
-        /// <summary>
-        /// Retrieve the Value Processor that is attached for processing this Drawers value element
-        /// </summary>
-        public AParameterProcessor Processor { get; set; }
-
         /*----------Functions----------*/
         //PUBLIC
 

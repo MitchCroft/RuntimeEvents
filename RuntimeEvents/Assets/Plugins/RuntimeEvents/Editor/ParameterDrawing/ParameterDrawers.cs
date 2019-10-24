@@ -52,11 +52,6 @@ namespace RuntimeEvents.ParameterProcessors {
             DrawerInstanceFailed,
 
             /// <summary>
-            /// There is no processor defined that can handle the supplied type
-            /// </summary>
-            ProcessorMissing,
-
-            /// <summary>
             /// There is no drawer defined that can handle the supplied type
             /// </summary>
             DrawerMissing,
@@ -110,9 +105,6 @@ namespace RuntimeEvents.ParameterProcessors {
                     //Known errors
                     case EErrorType.DrawerInstanceFailed:
                         toDisplay = "Failed to create drawer, " + additionalText;
-                        break;
-                    case EErrorType.ProcessorMissing:
-                        toDisplay = string.Format("No processor could be found for type '{0}'", Processing.FullName);
                         break;
                     case EErrorType.DrawerMissing:
                         //Set the base message
@@ -215,17 +207,14 @@ namespace RuntimeEvents.ParameterProcessors {
         /// Search the supplied objects type chain for a drawer that can be used
         /// </summary>
         /// <param name="type">The type object that will be unwinded to look for a processor</param>
-        /// <returns>Returns a drawer instance if found or null if unable to find a matching one</returns>
-        private static AParameterDrawer CheckTypeChain(Type type) {
+        /// <returns>Returns a Parameter Drawer Attribute object that corresponds to a usable drawer</returns>
+        private static CustomParameterDrawerAttribute CheckTypeChain(Type type) {
             //Create the exact descriptor required for this type
             CustomParameterDrawerAttribute buffer = new CustomParameterDrawerAttribute(type, false);
 
             //Check if the exact type exists that can be used
             if (parameterDrawers.ContainsKey(buffer))
-                return GetDrawer(buffer);
-
-            //Get the next type up the chain
-            type = type.BaseType;
+                return buffer;
 
             //Otherwise, traverse the hierarchy chain
             while (type != null) {
@@ -234,7 +223,7 @@ namespace RuntimeEvents.ParameterProcessors {
 
                 //If there is an instance for the descriptor, retrieve it
                 if (parameterDrawers.ContainsKey(buffer))
-                    return GetDrawer(buffer);
+                    return buffer;
 
                 //Advance a step up the hierarchy
                 type = type.BaseType;
@@ -247,60 +236,64 @@ namespace RuntimeEvents.ParameterProcessors {
         //PUBLIC
 
         /// <summary>
+        /// Check to see if there is a drawer object available for the specified combination of draw values
+        /// </summary>
+        /// <param name="type">The type of value that is to be displayed</param>
+        /// <param name="attribute">The attribute attached to the parameter to effect drawing</param>
+        /// <returns>Returns true if there is a contained drawer for the supplied combination</returns>
+        public static bool HasDrawer(Type type, ParameterAttribute attribute) {
+            //Check that at least one drawer could be found
+            if (attribute != null && CheckTypeChain(attribute.GetType()) != null) return true;
+            else return CheckTypeChain(type) != null;
+        }
+
+        /// <summary>
         /// Retrieve a drawer that can be used to render the supplied type
         /// </summary>
         /// <param name="type">The type of the object that is to be displayed</param>
         /// <param name="attribute">The optional attribute that is attached to the type for consideration</param>
         /// <returns>Returns a Parameter Drawer that will be used to display the value</returns>
         public static AParameterDrawer GetDrawer(Type type, ParameterAttribute attribute) {
-            //Retrieve the processor the processor that is used for this type
-            AParameterProcessor processor = ParameterProcessors.GetProcessor(type);
-
             //Store a reference to the drawer that will be used to display the current value
             AParameterDrawer drawer = null;
 
-            //If there is no processor setup an error drawer for this type
-            if (processor == null) {
-                //Check if the entry needs to be made
-                if (!typeMapping.ContainsKey(type)) typeMapping[type] = new ErrorParameterDrawer(EErrorType.ProcessorMissing);
+            //Get the type of the attribute 
+            Type attributeType = (attribute != null ? attribute.GetType() : null);
 
-                //Grab the drawer
-                drawer = typeMapping[type];
+            //Ensure that if there is an attribute, its drawer state is cached
+            if (attributeType != null && !typeMapping.ContainsKey(attributeType)) {
+                //Retrieve the descriptor for the attribute type
+                CustomParameterDrawerAttribute buffer = CheckTypeChain(attributeType);
+
+                //Cache the drawer that has been found for the attribute type
+                typeMapping[attributeType] = (buffer != null ?
+                    GetDrawer(buffer) :
+                    null
+                );
             }
 
-            //If there is a processor, identify a drawer
-            else {
-                //Get the type of the attribute 
-                Type attributeType = (attribute != null ? attribute.GetType() : null);
+            //If there is an attribute drawer now, use that over the type
+            if (attribute != null && typeMapping[attributeType] != null)
+                drawer = typeMapping[attributeType];
 
-                //Ensure that if there is an attribute, its drawer state is cached
-                if (attributeType != null && !typeMapping.ContainsKey(attributeType))
-                    typeMapping[attributeType] = CheckTypeChain(attributeType);
+            //Otherwise, a drawer for the type is needed
+            else if (!typeMapping.ContainsKey(type)) {
+                //Retrieve the descriptor for the attribute type
+                CustomParameterDrawerAttribute buffer = CheckTypeChain(type);
 
-                //If there is an attribute drawer now, use that over the type
-                if (attribute != null && typeMapping[attributeType] != null)
-                    drawer = typeMapping[attributeType];
-
-                //Otherwise, a drawer for the type is needed
-                else if (!typeMapping.ContainsKey(type)) {
-                    //Look for a drawer for this type
-                    AParameterDrawer typeDrawer = CheckTypeChain(type);
-
-                    //Store the processor in type mapping based on its existence
-                    drawer = typeMapping[type] = (typeDrawer != null ?
-                        typeDrawer :
-                        new ErrorParameterDrawer(EErrorType.DrawerMissing)
-                    );
-                }
-
-                //Otherwise, just use the type drawer
-                else drawer = typeMapping[type];
+                //Store the processor in type mapping based on its existence
+                drawer = typeMapping[type] = (buffer != null ?
+                    GetDrawer(buffer) :
+                    new ErrorParameterDrawer(EErrorType.DrawerMissing)
+                );
             }
+
+            //Otherwise, just use the type drawer
+            else drawer = typeMapping[type];
 
             //Assign the base values to the drawer
             drawer.Processing = type;
             drawer.Attribute = attribute;
-            drawer.Processor = processor;
 
             //Return the stored drawer
             return drawer;

@@ -64,7 +64,7 @@ namespace RuntimeEvents {
 
                 //Check that each of the parameter types has a supported type
                 foreach (ParameterInfo parm in parameters) {
-                    if (!ParameterProcessors.ParameterProcessors.HasProcessor(parm.ParameterType))
+                    if (!GenericSerialisation.CanProcess(parm.ParameterType))
                         return true;
                 }
 

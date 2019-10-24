@@ -300,6 +300,7 @@ namespace RuntimeEvents.Testing.Benchmarking {
                 string path = Path.Combine(Application.persistentDataPath, outputLocation);
                 if (!string.IsNullOrEmpty(path)) Directory.CreateDirectory(path);
                 File.WriteAllText(Path.Combine(path, label + ".csv"), csv.ToString());
+                Debug.LogFormat("Saved Test Results for '{0}' to '{1}'", label, Path.Combine(path, label + ".csv"));
             } catch (Exception exec) {
                 Debug.LogError("Failed to export CSV for test " + label + ". ERROR: " + exec.Message, this);
             }

@@ -35,7 +35,7 @@ namespace RuntimeEvents {
             /// </summary>
             public Type ParameterType {
                 get { return (string.IsNullOrEmpty(parameterType) ? null : Type.GetType(parameterType, false)); }
-                set { parameterType = (value == null ? string.Empty : PersistentParameterCache.MinifyTypeAssemblyName(value.AssemblyQualifiedName)); }
+                set { parameterType = GenericSerialisation.MinifyTypeAssemblyName(value); }
             }
 
             /// <summary>

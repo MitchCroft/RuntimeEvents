@@ -16,9 +16,7 @@ namespace RuntimeEvents.ParameterProcessors {
         /// <param name="parameterCaches">The parameter caches for the currently selected objects that store the current values of this parameter</param>
         /// <param name="label">The label that is attached to this parameter to be displayed</param>
         /// <returns>Returns a single line height for this value type</returns>
-        public override float GetDrawerHeight(PersistentParameterCache[] parameterCaches, GUIContent label) {
-            return EditorGUIUtility.singleLineHeight;
-        }
+        public override float GetDrawerHeight(PersistentParameterCache[] parameterCaches, GUIContent label) { return EditorGUIUtility.singleLineHeight; }
 
         /// <summary>
         /// Display the current Vector4 value setting to the inspector
@@ -28,26 +26,15 @@ namespace RuntimeEvents.ParameterProcessors {
         /// <param name="label">The label that is attached to this parameter to be displayed</param>
         /// <returns>Returns true if an event occurred that requires the updating of cached values</returns>
         public override bool DisplayParameterValue(Rect position, PersistentParameterCache[] parameterCaches, GUIContent label) {
-            //Get the value of the primary cache object
-            object currentObj;
-            if (!Processor.GetValue(parameterCaches[0], out currentObj)) {
-                EditorGUI.LabelField(position, label, new GUIContent("Failed to retrieve current value from processor"));
-                return false;
-            }
-
-            //Cast the value to a Vector2
-            Vector4 vector = (Vector4)currentObj;
+            //Cast the value to a Vector4
+            Vector4 vector = (Vector4)parameterCaches[0].Value;
 
             //Check if the contained values are different
             bool isDifferent = false;
             if (parameterCaches.Length > 1) {
                 for (int i = 1; i < parameterCaches.Length; i++) {
                     //Retrieve this entries value
-                    object newVal;
-                    if (!Processor.GetValue(parameterCaches[i], out newVal)) {
-                        EditorGUI.LabelField(position, label, new GUIContent("Failed to retrieve current value from processor"));
-                        return false;
-                    }
+                    object newVal = parameterCaches[i].Value;
 
                     //If the values are different, flag it
                     if ((Vector4)newVal != vector) {
@@ -65,16 +52,14 @@ namespace RuntimeEvents.ParameterProcessors {
                 //Begin looking for changes
                 EditorGUI.BeginChangeCheck();
 
-                //Show the color field
+                //Show the vector field
                 Vector4 newVector = EditorGUI.Vector4Field(position, label, vector);
 
                 //If the value changed, apply it 
                 if (EditorGUI.EndChangeCheck()) {
                     modified = true;
-                    for (int i = 0; i < parameterCaches.Length; i++) {
-                        if (!Processor.AssignValue(parameterCaches[i], newVector))
-                            Debug.LogErrorFormat("Failed to assign the new state value '{0}' to the parameter cache at index {1}", newVector, i);
-                    }
+                    for (int i = 0; i < parameterCaches.Length; i++) 
+                        parameterCaches[i].SetValue(newVector, Processing);
                 }
             }
 
