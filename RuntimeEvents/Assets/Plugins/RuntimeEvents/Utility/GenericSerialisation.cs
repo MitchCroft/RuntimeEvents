@@ -193,6 +193,9 @@ namespace RuntimeEvents {
         /// <param name="type">The type of object that is being tested</param>
         /// <returns>Returns true if the type can be processed</returns>
         public static bool CanProcess(Type type) {
+            //Check that the type is valid
+            if (type == null) return false;
+
             //If the type is a List
             if (ILIST.IsAssignableFrom(type)) {
                 //Check if this is a List

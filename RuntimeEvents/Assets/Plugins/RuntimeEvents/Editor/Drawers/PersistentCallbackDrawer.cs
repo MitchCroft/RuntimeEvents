@@ -353,10 +353,10 @@ namespace RuntimeEvents {
             public static bool DrawLayoutElements(Rect position, SerializedProperty property, Type[] dynamicTypes, Action forceDirty) {
                 //Get the target objects of the property
                 PersistentCallback[] callbacks;
-                property.GetPropertyValues(out callbacks);
 
-                //Check that there are objects to be displayed
-                if (callbacks.Length == 0) return false;
+                //Check that there are values to check
+                if (!property.GetPropertyValues(out callbacks) || callbacks.Length == 0)
+                    return false;
 
                 //Flag if the height of this object needs to be recalculated
                 bool elementsModified = false;
@@ -499,7 +499,7 @@ namespace RuntimeEvents {
                     }
                 }
 
-                //If the primary method is different across the multiple objects
+                //If the primary method is consistent across the multiple objects, display the values
                 if (!methodsAreDifferent && !callbacks[0].IsDynamic && primaryMethod != null) {
                     //Store the rect of the last point
                     Rect displayRect = GetLineOffsetPosition(position, 1, 1f);
@@ -520,7 +520,8 @@ namespace RuntimeEvents {
                         displayRect.height = drawer.GetDrawerHeight(current, param.DisplayLabel);
 
                         //Draw the elements to the inspector
-                        elementsModified |= drawer.DisplayParameterValue(displayRect, current, param.DisplayLabel);
+                        if (drawer.DisplayParameterValue(displayRect, current, param.DisplayLabel) && !elementsModified)
+                            elementsModified = true;
 
                         //Increment the current progress through the parameters
                         ++ind;

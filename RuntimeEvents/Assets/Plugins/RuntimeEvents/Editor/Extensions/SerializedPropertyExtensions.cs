@@ -46,17 +46,24 @@ namespace RuntimeEvents {
 
             //Travel down the property path sections
             FieldInfo field;
-            for (int p = 0; p < pathSections.Length; p++) {
+            for (int p = 0; p < pathSections.Length && obj != null; ++p) {
                 //If this section is not an array of data, process it simple
                 if (pathSections[p] != "Array") {
                     //Retrieve the type of the current object reference
                     Type type = obj.GetType();
 
-                    //Get the field for the next section
-                    field = type.GetField(pathSections[p], SEARCH_FLAGS);
+                    //Search won't find the private members of base classes, need to work way up inheritance chain
+                    do {
+                        //Get the field for the next section
+                        field = type.GetField(pathSections[p], SEARCH_FLAGS);
+
+                        //If not found, look in base class
+                        if (field == null) type = type.BaseType;
+                        else break;
+                    } while (type != null);
 
                     //Get the object value at this section
-                    obj = field.GetValue(obj);
+                    obj = (field != null ? field.GetValue(obj) : null);
                 }
 
                 //Otherwise, retrieve the array element within the collection
@@ -72,8 +79,11 @@ namespace RuntimeEvents {
                     //Ensure that this element is a list
                     if (!(obj is IList)) throw new NullReferenceException(string.Format("While attempting to parse SerializedProperty path '{0}' the collection object '{1}' ({2}) could not be retrieved", property.propertyPath, obj, pathSections[p - 2]));
 
+                    //Get the list object that can be tested
+                    IList list = (obj as IList);
+
                     //Get the object value at this section
-                    obj = (obj as IList)[index];
+                    obj = (index < list.Count ? list[index] : null);
                 }
             }
 
@@ -97,18 +107,25 @@ namespace RuntimeEvents {
 
                 //Travel down the property path sections
                 FieldInfo field;
-                for (int p = 0; p < pathSections.Length; p++) {
+                for (int p = 0; p < pathSections.Length && objs.Length > 0; ++p) {
                     //If this is not an array of data, process it simple
                     if (pathSections[p] != "Array") {
                         //Retrieve the type of the current object
                         Type type = objs[0].GetType();
 
-                        //Get the field for the next section
-                        field = type.GetField(pathSections[p], SEARCH_FLAGS);
+                        //Search won't find the private members of base classes, need to work way up inheritance chain
+                        do {
+                            //Get the field for the next section
+                            field = type.GetField(pathSections[p], SEARCH_FLAGS);
+
+                            //If not found, look in base class
+                            if (field == null) type = type.BaseType;
+                            else break;
+                        } while (type != null);
 
                         //Get the object values at the this section
-                        object[] copy = new object[objs.Length];
-                        for (int i = 0; i < objs.Length; i++) {
+                        object[] copy = new object[field != null ? objs.Length : 0];
+                        for (int i = 0; i < copy.Length; ++i) {
                             if (objs[i] != null)
                                 copy[i] = field.GetValue(objs[i]);
                         }
@@ -130,8 +147,11 @@ namespace RuntimeEvents {
 
                         //Get the object values at this section
                         for (int i = 0; i < objs.Length; i++) {
-                            if (objs[i] != null)
-                                objs[i] = (objs[i] as IList)[index];
+                            //Get the list object that can be tested
+                            IList list = (objs[i] as IList);
+
+                            //Get the object value at this section
+                            objs[i] = (index < list.Count ? list[index] : null);
                         }
                     }
                 }

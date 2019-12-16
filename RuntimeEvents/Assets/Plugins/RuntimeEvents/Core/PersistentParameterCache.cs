@@ -56,6 +56,10 @@ namespace RuntimeEvents {
         /// Convert the current object data into a serialisable format
         /// </summary>
         public void OnBeforeSerialize() {
+            //Check the type is valid for serialisation
+            if (ParameterType == null) return;
+
+            //Serialise the data for storage
             typeString = GenericSerialisation.MinifyTypeAssemblyName(ParameterType);
             data = GenericSerialisation.Serialise(Value, ParameterType);
         }
@@ -64,8 +68,11 @@ namespace RuntimeEvents {
         /// Convert the stored serialised data back into a usable object form
         /// </summary>
         public void OnAfterDeserialize() {
+            //Retrieve the stored Type instance
             ParameterType = Type.GetType(typeString);
-            Value = GenericSerialisation.Parse(data, ParameterType);
+
+            //If there is a type, de-serialise the data value
+            if (ParameterType != null) Value = GenericSerialisation.Parse(data, ParameterType);
         }
     }
 }
