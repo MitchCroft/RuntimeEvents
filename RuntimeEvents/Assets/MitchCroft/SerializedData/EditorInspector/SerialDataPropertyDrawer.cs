@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 
@@ -14,7 +14,7 @@ namespace MitchCroft.SerializedData.EditorInspector {
     /// Handle the displaying of generic serialised data within the Unity Inspector window
     /// </summary>
     [CustomPropertyDrawer(typeof(SerialData))]
-    public sealed class DataPropertyDrawer : PropertyDrawer {
+    public sealed class SerialDataPropertyDrawer : PropertyDrawer {
         /*----------Types----------*/
         //PRIVATE
 
@@ -105,7 +105,7 @@ namespace MitchCroft.SerializedData.EditorInspector {
         /// <summary>
         /// Identify the object elements within the currently loaded assembly for display
         /// </summary>
-        static DataPropertyDrawer() {
+        static SerialDataPropertyDrawer() {
             // Find all of the drawer types that can be used
             Type drawerAttributeType = typeof(CustomDataDrawerAttribute);
             TypeMarkerAttributeComparer comparer = new TypeMarkerAttributeComparer();
@@ -163,11 +163,11 @@ namespace MitchCroft.SerializedData.EditorInspector {
             }
 
             // Create the management drawer objects
-            mismatchDrawer      = new TypeMismatchDataDrawer();
-            nonSerialDrawer     = new NonSerialDataDrawer();
-            generateDrawer      = new GenerateStorageDataDrawer();
+            mismatchDrawer = new TypeMismatchDataDrawer();
+            nonSerialDrawer = new NonSerialDataDrawer();
+            generateDrawer = new GenerateStorageDataDrawer();
             missingSerialDrawer = new MissingSerialPropertyDrawer();
-            defaultDrawer       = new DefaultDataDrawer();
+            defaultDrawer = new DefaultDataDrawer();
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace MitchCroft.SerializedData.EditorInspector {
             data = GetPropertyValues(serialDataProperty);
 
             // If the data can be displayed, find a useful data drawer
-            if (CanDataBeDisplayed(data, out valueProperty, out storage, out dataDrawer)) 
+            if (CanDataBeDisplayed(data, out valueProperty, out storage, out dataDrawer))
                 dataDrawer = GetDrawerForData(data[0]);
 
             // If there is a data object, apply it's settings to the drawer
@@ -250,6 +250,10 @@ namespace MitchCroft.SerializedData.EditorInspector {
 
             // Assign the data to the storage objects for display
             for (int i = 0; i < data.Length; ++i) {
+                // Ensure the live value reflects the serial data properly
+                data[i].OnAfterDeserialize();
+
+                // Assign the specified value to the storage element
                 if (!storage[i].SetValue(data[i].Value)) {
                     Debug.LogErrorFormat("Unable to assign the value '{0}' to the storage object '{1}'. Check storage asset is compatible with this type", data[i].Value, storage[i]);
                     storage = null;
@@ -429,7 +433,7 @@ namespace MitchCroft.SerializedData.EditorInspector {
         /// <summary>
         /// Initialise the default values of this drawer for operation
         /// </summary>
-        public DataPropertyDrawer() {
+        public SerialDataPropertyDrawer() {
             dataDrawerInstances = new Dictionary<Type, IDataDrawer>(dataDrawerTypes.Count);
             dataStorageInstances = new Dictionary<Type, List<SerialStorage>>(dataStorageTypes.Count);
             drawerSearchResults = new Dictionary<Type, IDataDrawer>();
@@ -488,7 +492,15 @@ namespace MitchCroft.SerializedData.EditorInspector {
                 for (int i = 0; i < data.Length; ++i) {
                     // If the data can't be assigned, warn the user and hope they can figure it out
                     if (!data[i].SetValue(toApply, data[i].DataType))
-                        Debug.LogErrorFormat("Failed to apply the data value '{0}' to the object of type '{1}'", toApply, data[i].DataType); 
+                        Debug.LogErrorFormat("Failed to apply the data value '{0}' to the object of type '{1}'", toApply, data[i].DataType);
+                    
+                    else {
+                        // Apply the data changes to the serial storage for record
+                        data[i].OnBeforeSerialize();
+
+                        // Record any prefab changes that are needed for updates
+                        PrefabUtility.RecordPrefabInstancePropertyModifications(property.serializedObject.targetObjects[i]);
+                    }
                 }
             }
 

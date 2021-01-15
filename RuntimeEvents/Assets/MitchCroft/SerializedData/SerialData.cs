@@ -17,12 +17,12 @@ namespace MitchCroft.SerializedData {
         /// <summary>
         /// The string representation of the type of the value that is stored within this object
         /// </summary>
-        [SerializeField] private string typeString;
+        [SerializeField] private string typeString = string.Empty;
 
         /// <summary>
         /// The string representation of the data that makes up this cached object value
         /// </summary>
-        [SerializeField] private string data;
+        [SerializeField] private string data = string.Empty;
 
         /*----------Properties----------*/
         //PUBLIC
